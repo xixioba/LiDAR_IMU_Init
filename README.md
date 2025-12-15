@@ -43,6 +43,26 @@ our accompanying videos are now available on **YouTube** (click below images to 
 </div>
 
 
+## !!! New for Rayz + Macos + without Livox driver
+
+- [ROS1 Noetic Install for Macos micromamba](https://robostack.github.io/index.html)
+
+- **Build**
+
+  ```bash
+  cd <ros1_ws>/src # cd into a ros1 workspace folder
+  git clone https://github.com/xixioba/RayzSLAM_LiDAR_IMU_Iint && cd ..
+  export CPLUS_INCLUDE_PATH=$CONDA_PREFIX/include:$CPLUS_INCLUDE_PATH && catkin_make -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+  ```
+
+- **Run**
+
+  ```bash
+  source devel/setup.zsh
+  roslaunch lidar_imu_init rayz.launch
+  # rayz lidar sdk ros
+  roslaunch rayz rayz.launch lidar_model:=h260 fixed_frame:=camera_init
+  ```
 
 ## 1. Prerequisites
 

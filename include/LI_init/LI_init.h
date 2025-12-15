@@ -8,6 +8,8 @@
 #include <csignal>
 #include <so3_math.h>
 #include <Eigen/Eigen>
+#include <Eigen/Core>
+#include <Eigen/Dense>
 #include <condition_variable>
 #include <eigen_conversions/eigen_msg.h>
 #include <common_lib.h>
@@ -15,6 +17,7 @@
 #include <ceres/ceres.h>
 #include <sys/time.h>
 #include "matplotlibcpp.h"
+#include <type_traits>  // 添加C++17支持
 
 #define FILE_DIR(name)     (string(string(ROOT_DIR) + "Log/"+ name))
 

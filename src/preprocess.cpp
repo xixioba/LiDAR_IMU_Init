@@ -42,12 +42,12 @@ void Preprocess::set(bool feat_en, int lid_type, double bld, int pfilt_num) {
     point_filter_num = pfilt_num;
 }
 
-void Preprocess::process(const livox_ros_driver::CustomMsg::ConstPtr &msg, PointCloudXYZI::Ptr &pcl_out) {
+void Preprocess::process(const lidar_imu_init::CustomMsg::ConstPtr &msg, PointCloudXYZI::Ptr &pcl_out) {
     avia_handler(msg);
     *pcl_out = pl_surf;
 }
 
-void Preprocess::process_cut_frame_livox(const livox_ros_driver::CustomMsg::ConstPtr &msg,
+void Preprocess::process_cut_frame_livox(const lidar_imu_init::CustomMsg::ConstPtr &msg,
                                          deque<PointCloudXYZI::Ptr> &pcl_out, deque<double> &time_lidar,
                                          const int required_frame_num, int scan_count) {
     int plsize = msg->point_num;
@@ -111,7 +111,7 @@ void Preprocess::process_cut_frame_livox(const livox_ros_driver::CustomMsg::Cons
         }
     }
 }
-#define MAX_LINE_NUM 128
+#define MAX_LINE_NUM 160
 void
 Preprocess::process_cut_frame_pcl2(const sensor_msgs::PointCloud2::ConstPtr &msg, deque<PointCloudXYZI::Ptr> &pcl_out,
                                    deque<double> &time_lidar, const int required_frame_num, int scan_count) {
@@ -295,7 +295,32 @@ Preprocess::process_cut_frame_pcl2(const sensor_msgs::PointCloud2::ConstPtr &msg
                 pl_surf.points.push_back(added_pt);
             }
         }
-    }else{
+    }else if(lidar_type == RAYZ){
+        pcl::PointCloud<rayz_ros::RayzPointRos> pl_orig;
+        pcl::fromROSMsg(*msg, pl_orig);
+        int plsize = pl_orig.points.size();
+        pl_surf.reserve(plsize);
+        for (int i = 0; i < plsize; i++) {
+            PointType added_pt;
+            added_pt.normal_x = 0;
+            added_pt.normal_y = 0;
+            added_pt.normal_z = 0;
+            added_pt.x = pl_orig.points[i].x;
+            added_pt.y = pl_orig.points[i].y;
+            added_pt.z = pl_orig.points[i].z;
+            added_pt.intensity = pl_orig.points[i].intensity;
+            added_pt.curvature = pl_orig.points[i].ts_10usec * 0.01;  // 10us to ms
+
+            double dist = added_pt.x * added_pt.x + added_pt.y * added_pt.y + added_pt.z * added_pt.z;
+            if ( dist < blind * blind || isnan(added_pt.x) || isnan(added_pt.y) || isnan(added_pt.z))
+                continue;
+
+            if (i % point_filter_num == 0 && pl_orig.points[i].vline < N_SCANS) {
+                pl_surf.points.push_back(added_pt);
+            }
+        }
+    }
+    else{
         cout << BOLDRED << "Wrong LiDAR Type!!!" << endl;
         return;
     }
@@ -345,6 +370,9 @@ void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointClo
         case L515:
             l515_handler(msg);
             break;
+        case RAYZ:
+            rayz_handler(msg);
+            break;
 
         default:
             printf("Error LiDAR Type");
@@ -353,7 +381,182 @@ void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointClo
     *pcl_out = pl_surf;
 }
 
-void Preprocess::avia_handler(const livox_ros_driver::CustomMsg::ConstPtr &msg) {
+void Preprocess::rayz_handler(const sensor_msgs::PointCloud2::ConstPtr &msg)
+{
+  pl_surf.clear();
+  pl_corn.clear();
+  pl_full.clear();
+  
+  pcl::PointCloud<rayz_ros::RayzPointRos> pl_orig;
+  pcl::fromROSMsg(*msg, pl_orig);
+  int plsize = pl_orig.points.size();
+  if (plsize == 0) return;
+  
+  pl_corn.reserve(plsize);
+  pl_surf.reserve(plsize);
+  pl_full.reserve(plsize);
+
+  // 使用临时缓冲区按线号分桶存储原始点
+  std::vector<std::vector<rayz_ros::RayzPointRos>> line_buffers(N_SCANS);
+  for (int i = 0; i < N_SCANS; i++)
+  {
+    line_buffers[i].reserve(plsize / N_SCANS + 100);
+  }
+
+  // 按线号分桶
+  for (int i = 0; i < plsize; i++)
+  {
+    int line_id = pl_orig.points[i].vline;
+    if (line_id < N_SCANS)
+    {
+      line_buffers[line_id].push_back(pl_orig.points[i]);
+    }
+  }
+
+  uint valid_num = 0;
+
+  if (feature_enabled)
+  {
+    // 清理 pl_buff 用于特征提取
+    for (int i = 0; i < N_SCANS; i++)
+    {
+      pl_buff[i].clear();
+      pl_buff[i].reserve(line_buffers[i].size());
+    }
+
+    for (int line_id = 0; line_id < N_SCANS; line_id++)
+    {
+      if (line_buffers[line_id].empty()) continue;
+
+      // 按时间戳排序
+      std::sort(line_buffers[line_id].begin(), line_buffers[line_id].end(),
+        [](const rayz_ros::RayzPointRos& a, const rayz_ros::RayzPointRos& b) {
+          if (a.ts_10usec != b.ts_10usec) return a.ts_10usec < b.ts_10usec;
+          return a.h_angle < b.h_angle;
+        });
+
+      size_t line_size = line_buffers[line_id].size();
+      for (size_t j = 0; j < line_size; j++)
+      {
+        const auto &pt = line_buffers[line_id][j];
+
+        PointType added_pt;
+        added_pt.x = pt.x;
+        added_pt.y = pt.y;
+        added_pt.z = pt.z;
+        added_pt.intensity = static_cast<float>(pt.intensity);
+        added_pt.normal_x = 0;
+        added_pt.normal_y = 0;
+        added_pt.normal_z = 0;
+        added_pt.curvature = pt.ts_10usec * 0.01f;  // 10us to ms
+
+        // 去重
+        if (j > 0)
+        {
+          const auto &pt_prev = line_buffers[line_id][j - 1];
+          if ((std::abs(pt.x - pt_prev.x) > 1e-7) || 
+              (std::abs(pt.y - pt_prev.y) > 1e-7) ||
+              (std::abs(pt.z - pt_prev.z) > 1e-7))
+          {
+            pl_buff[line_id].push_back(added_pt);
+          }
+        }
+        else
+        {
+          pl_buff[line_id].push_back(added_pt);
+        }
+      }
+    }
+
+    static int count = 0;
+    static double time = 0.0;
+    count++;
+    double t0 = omp_get_wtime();
+    for (int j = 0; j < N_SCANS; j++)
+    {
+      if (pl_buff[j].size() <= 5)
+        continue;
+      pcl::PointCloud<PointType>& pl = pl_buff[j];
+      int line_plsize = pl.size();
+      vector<orgtype>& types = typess[j];
+      types.clear();
+      types.resize(line_plsize);
+      line_plsize--;
+      for (uint i = 0; i < line_plsize; i++)
+      {
+        types[i].range = sqrt(pl[i].x * pl[i].x + pl[i].y * pl[i].y);
+        vx = pl[i].x - pl[i + 1].x;
+        vy = pl[i].y - pl[i + 1].y;
+        vz = pl[i].z - pl[i + 1].z;
+        types[i].dista = sqrt(vx * vx + vy * vy + vz * vz);
+      }
+      types[line_plsize].range = sqrt(pl[line_plsize].x * pl[line_plsize].x + pl[line_plsize].y * pl[line_plsize].y);
+      give_feature(pl, types);
+    }
+    time += omp_get_wtime() - t0;
+    printf("Feature extraction time: %lf \n", time / count);
+  }
+  else
+  {
+    // 非特征提取模式：直接处理并输出有序点云
+    for (int line_id = 0; line_id < N_SCANS; line_id++)
+    {
+      if (line_buffers[line_id].empty()) continue;
+
+      // 按时间戳排序
+      std::sort(line_buffers[line_id].begin(), line_buffers[line_id].end(),
+        [](const rayz_ros::RayzPointRos& a, const rayz_ros::RayzPointRos& b) {
+          if (a.ts_10usec != b.ts_10usec) return a.ts_10usec < b.ts_10usec;
+          return a.h_angle < b.h_angle;
+        });
+
+      size_t line_size = line_buffers[line_id].size();
+      for (size_t j = 0; j < line_size; j++)
+      {
+        const auto &pt = line_buffers[line_id][j];
+
+        valid_num++;
+        if (valid_num % point_filter_num == 0)
+        {
+          // 盲区过滤
+          double dist_sq = pt.x * pt.x + pt.y * pt.y + pt.z * pt.z;
+          if (dist_sq > blind * blind)
+          {
+            PointType added_pt;
+            added_pt.x = pt.x;
+            added_pt.y = pt.y;
+            added_pt.z = pt.z;
+            added_pt.intensity = static_cast<float>(pt.intensity);
+            added_pt.normal_x = 0;
+            added_pt.normal_y = 0;
+            added_pt.normal_z = 0;
+            added_pt.curvature = pt.ts_10usec * 0.01f;  // 10us to ms
+
+            pl_full.push_back(added_pt);
+
+            // 去重
+            if (j > 0)
+            {
+              const auto &pt_prev = line_buffers[line_id][j - 1];
+              if ((std::abs(pt.x - pt_prev.x) > 1e-7) || 
+                  (std::abs(pt.y - pt_prev.y) > 1e-7) ||
+                  (std::abs(pt.z - pt_prev.z) > 1e-7))
+              {
+                pl_surf.push_back(added_pt);
+              }
+            }
+            else
+            {
+              pl_surf.push_back(added_pt);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void Preprocess::avia_handler(const lidar_imu_init::CustomMsg::ConstPtr &msg) {
     pl_surf.clear();
     pl_corn.clear();
     pl_full.clear();

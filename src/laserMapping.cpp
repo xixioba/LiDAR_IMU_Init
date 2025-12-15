@@ -46,10 +46,11 @@
 #include <pcl/io/pcd_io.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
-#include <livox_ros_driver/CustomMsg.h>
+#include <lidar_imu_init/CustomMsg.h>
 #include "preprocess.h"
 #include <ikd-Tree/ikd_Tree.h>
 #include <LI_init/LI_init.h>
+#include <filesystem>
 
 #ifndef DEPLOY
 #include "matplotlibcpp.h"
@@ -307,7 +308,7 @@ void lasermap_fov_segment() {
 double timediff_imu_wrt_lidar = 0.0;
 bool timediff_set_flg = false;
 
-void livox_pcl_cbk(const livox_ros_driver::CustomMsg::ConstPtr &msg) {
+void livox_pcl_cbk(const lidar_imu_init::CustomMsg::ConstPtr &msg) {
     mtx_buffer.lock();
     scan_count++;
     if (msg->header.stamp.toSec() < last_timestamp_lidar) {
@@ -360,7 +361,7 @@ void standard_pcl_cbk(const sensor_msgs::PointCloud2::ConstPtr &msg) {
         printf("Self sync IMU and LiDAR, HARD time lag is %.10lf \n \n", timediff_imu_wrt_lidar);
     }
 
-    if ((lidar_type == VELO || lidar_type == OUSTER || lidar_type == PANDAR || lidar_type == ROBOSENSE) && cut_frame) {
+    if ((lidar_type == VELO || lidar_type == OUSTER || lidar_type == PANDAR || lidar_type == ROBOSENSE || lidar_type == RAYZ) && cut_frame) {
         deque<PointCloudXYZI::Ptr> ptr;
         deque<double> timestamp_lidar;
         p_pre->process_cut_frame_pcl2(msg, ptr, timestamp_lidar, cut_frame_num, scan_count);
@@ -592,7 +593,7 @@ void publish_frame_world(const ros::Publisher &pubLaserCloudFullRes) {
     /* 1. make sure you have enough memories
        2. noted that pcd save will influence the real-time performences **/
     if (pcd_save_en) {
-        boost::filesystem::create_directories(root_dir + "/PCD");
+        std::filesystem::create_directories(root_dir + "/PCD");
         int size = feats_undistort->points.size();
         PointCloudXYZI::Ptr laserCloudWorld(new PointCloudXYZI(size, 1));
         for (int i = 0; i < size; i++) {
@@ -848,8 +849,8 @@ int main(int argc, char **argv) {
     Jaco_rot.setZero();
 
     /*** debug record ***/
-    boost::filesystem::create_directories(root_dir + "/Log");
-    boost::filesystem::create_directories(root_dir + "/result");
+    std::filesystem::create_directories(root_dir + "/Log");
+    std::filesystem::create_directories(root_dir + "/result");
     ofstream fout_out;
     fout_out.open(DEBUG_FILE_DIR("mat_out.txt"), ios::out);
     fout_result.open(RESULT_FILE_DIR("Initialization_result.txt"), ios::out);

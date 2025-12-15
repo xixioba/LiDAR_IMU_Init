@@ -260,6 +260,7 @@ void LI_Init::acc_interpolate() {
 void LI_Init::Butter_filt(const deque<CalibState> &signal_in, deque<CalibState> &signal_out) {
     LI_Init::Butterworth butter;
     butter.extend_num = 10 * (butter.Coeff_size - 1);
+    // butter.extend_num = std::min(static_cast<int>(signal_in.size() / 2), 10 * (butter.Coeff_size - 1));
     auto it_front = signal_in.begin() + butter.extend_num;
     auto it_back = signal_in.end() - 1 - butter.extend_num;
 
@@ -321,7 +322,7 @@ void LI_Init::solve_Rotation_only() {
     R_LI_quat[2] = 0;
     R_LI_quat[3] = 0;
 
-    ceres::LocalParameterization *quatParam = new ceres::QuaternionParameterization();
+    ceres::Manifold *quatParam = new ceres::QuaternionManifold();
     ceres::Problem problem_rot;
     problem_rot.AddParameterBlock(R_LI_quat, 4, quatParam);
 
@@ -357,7 +358,7 @@ void LI_Init::solve_Rot_bias_gyro(double &timediff_imu_wrt_lidar) {
 
     double time_lag2 = 0; //Second time lag (IMU wtr Lidar)
 
-    ceres::LocalParameterization *quatParam = new ceres::QuaternionParameterization();
+    ceres::Manifold *quatParam = new ceres::QuaternionManifold();
     ceres::Problem problem_ang_vel;
 
     problem_ang_vel.AddParameterBlock(R_LI_quat, 4, quatParam);
@@ -420,7 +421,7 @@ void LI_Init::solve_trans_biasacc_grav() {
     Trans_IL[1] = 0.0;
     Trans_IL[2] = 0.0;
 
-    ceres::LocalParameterization *quatParam = new ceres::QuaternionParameterization();
+    ceres::Manifold *quatParam = new ceres::QuaternionManifold();
     ceres::Problem problem_acc;
 
     problem_acc.AddParameterBlock(R_GL0_quat, 4, quatParam);
