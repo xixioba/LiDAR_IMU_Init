@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5)
 project(lidar_imu_init)
 
 SET(CMAKE_BUILD_TYPE "Release")
@@ -14,6 +14,22 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -pthread -std=c++0x -fexceptions")
+
+# macOS + Conda Environment Support
+if(APPLE AND DEFINED ENV{CONDA_PREFIX})
+    message(STATUS "Detected macOS conda environment: $ENV{CONDA_PREFIX}")
+    
+    # Add conda include path FIRST with highest priority
+    set(CMAKE_CXX_FLAGS "-isystem $ENV{CONDA_PREFIX}/include/eigen3 -isystem $ENV{CONDA_PREFIX}/include ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "-isystem $ENV{CONDA_PREFIX}/include ${CMAKE_C_FLAGS}")
+    
+    # Explicitly tell compiler to skip /opt/homebrew/include to avoid Eigen conflicts
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument")
+    
+    # Also add to include directories for better IDE support
+    include_directories(BEFORE SYSTEM $ENV{CONDA_PREFIX}/include/eigen3)
+    include_directories(BEFORE SYSTEM $ENV{CONDA_PREFIX}/include)
+endif()
 
 message("Current CPU architecture: ${CMAKE_SYSTEM_PROCESSOR}")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" )
