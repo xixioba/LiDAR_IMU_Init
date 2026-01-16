@@ -1,30 +1,30 @@
 Initialization result:
-Rotation LiDAR to IMU (degree)     =  1.620747 -0.204874 -1.384840
-Translation LiDAR to IMU (meter)   = 0.035545 0.002284 0.023019
-Time Lag IMU to LiDAR (second)     = -0.046508
-Bias of Gyroscope  (rad/s)         =  0.006072 -0.005714 -0.014835
-Bias of Accelerometer (meters/s^2) = 0.010195 0.009470 0.010315
-Gravity in World Frame(meters/s^2) =  0.182766 -1.227923 -9.731131
+Rotation LiDAR to IMU (degree)     =  0.662044  1.360070 -1.236704
+Translation LiDAR to IMU (meter)   =  0.002048 -0.095893  0.018497
+Time Lag IMU to LiDAR (second)     = -0.016476
+Bias of Gyroscope  (rad/s)         =  0.003669 -0.007669  0.007225
+Bias of Accelerometer (meters/s^2) =  0.010011 -0.010333  0.009644
+Gravity in World Frame(meters/s^2) =  0.178577 -0.265891 -9.804770
 
 Homogeneous Transformation Matrix from LiDAR to IMU: 
- 0.999702  0.024055 -0.004256  0.035545
--0.024166  0.999311 -0.028187  0.002284
- 0.003575  0.028281  0.999594  0.023019
+ 0.999485  0.021854  0.023477  0.002048
+-0.021575  0.999694 -0.012063 -0.095893
+-0.023734  0.011550  0.999652  0.018497
  0.000000  0.000000  0.000000  1.000000
 
 
 Refinement result:
-Rotation LiDAR to IMU (degree)     =  0.410940  1.148553 -1.233509
-Translation LiDAR to IMU (meter)   = -0.020997 -0.047746  0.116518
-Time Lag IMU to LiDAR (second)     = -0.046508
-Bias of Gyroscope  (rad/s)         =  0.011322 -0.021518 -0.015767
-Bias of Accelerometer (meters/s^2) = -0.010598 -0.030144  0.020838
-Gravity in World Frame(meters/s^2) =  0.185959 -1.202903 -9.749278
+Rotation LiDAR to IMU (degree)     =  1.989162  2.264572 -2.451139
+Translation LiDAR to IMU (meter)   =  0.001154 -0.138917 -0.005240
+Time Lag IMU to LiDAR (second)     = -0.016476
+Bias of Gyroscope  (rad/s)         = -0.012092  0.023768 -0.007481
+Bias of Accelerometer (meters/s^2) = -0.004012 -0.048197  0.064963
+Gravity in World Frame(meters/s^2) =  0.162827 -0.268922 -9.776956
 
 Homogeneous Transformation Matrix from LiDAR to IMU: 
- 0.999567  0.021669  0.019884 -0.020997
--0.021521  0.999739 -0.007601 -0.047746
--0.020043  0.007170  0.999773  0.116518
+ 0.998305  0.044109  0.037967  0.001154
+-0.042731  0.998425 -0.036365 -0.138917
+-0.039511  0.034681  0.998617 -0.005240
  0.000000  0.000000  0.000000  1.000000
 
 

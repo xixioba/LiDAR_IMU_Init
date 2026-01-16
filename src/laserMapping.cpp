@@ -361,7 +361,7 @@ void standard_pcl_cbk(const sensor_msgs::PointCloud2::ConstPtr &msg) {
         printf("Self sync IMU and LiDAR, HARD time lag is %.10lf \n \n", timediff_imu_wrt_lidar);
     }
 
-    if ((lidar_type == VELO || lidar_type == OUSTER || lidar_type == PANDAR || lidar_type == ROBOSENSE || lidar_type == RAYZ) && cut_frame) {
+    if ((lidar_type == VELO || lidar_type == OUSTER || lidar_type == PANDAR || lidar_type == ROBOSENSE || lidar_type == RAYZ || lidar_type == RAYZ_F360) && cut_frame) {
         deque<PointCloudXYZI::Ptr> ptr;
         deque<double> timestamp_lidar;
         p_pre->process_cut_frame_pcl2(msg, ptr, timestamp_lidar, cut_frame_num, scan_count);
@@ -909,7 +909,7 @@ int main(int argc, char **argv) {
 
             p_imu->Process(Measures, state, feats_undistort);
             state_propagat = state;
-
+            
 
             /*** Segment the map in lidar FOV ***/
             lasermap_fov_segment();

@@ -319,6 +319,31 @@ Preprocess::process_cut_frame_pcl2(const sensor_msgs::PointCloud2::ConstPtr &msg
                 pl_surf.points.push_back(added_pt);
             }
         }
+    }else if(lidar_type == RAYZ_F360){
+        pcl::PointCloud<rayz_ros::RayzPointRos> pl_orig;
+        pcl::fromROSMsg(*msg, pl_orig);
+        int plsize = pl_orig.points.size();
+        pl_surf.reserve(plsize);
+        for (int i = 0; i < plsize; i++) {
+            PointType added_pt;
+            added_pt.normal_x = 0;
+            added_pt.normal_y = 0;
+            added_pt.normal_z = 0;
+            added_pt.x = pl_orig.points[i].x;
+            added_pt.y = pl_orig.points[i].y;
+            added_pt.z = pl_orig.points[i].z;
+            added_pt.intensity = pl_orig.points[i].intensity;
+            added_pt.curvature = pl_orig.points[i].ts_10usec * 0.01;  // 10us to ms
+
+            double dist = added_pt.x * added_pt.x + added_pt.y * added_pt.y + added_pt.z * added_pt.z;
+            if ( dist < blind * blind || isnan(added_pt.x) || isnan(added_pt.y) || isnan(added_pt.z))
+                continue;
+
+            // RAYZ_F360: only x,y,z,intensity,ts are valid, so we don't check vline
+            if (i % point_filter_num == 0) {
+                pl_surf.points.push_back(added_pt);
+            }
+        }
     }
     else{
         cout << BOLDRED << "Wrong LiDAR Type!!!" << endl;
@@ -371,6 +396,9 @@ void Preprocess::process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointClo
             l515_handler(msg);
             break;
         case RAYZ:
+            rayz_handler(msg);
+            break;
+        case RAYZ_F360:
             rayz_handler(msg);
             break;
 
